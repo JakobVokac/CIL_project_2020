@@ -25,7 +25,6 @@ import numpy as np
 SEED = 1234
 
 logger = logging.getLogger(__name__)
-
 random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
