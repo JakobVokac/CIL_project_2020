@@ -107,24 +107,26 @@ def tokenize_and_cut(sentence):
 We define the label field as before.
 """
 
-from torchtext import data
-
-TEXT = data.Field(batch_first=True,
-                  use_vocab=False,
-                  tokenize=tokenize_and_cut,
-                  preprocessing=tokenizer.convert_tokens_to_ids,
-                  init_token=init_token_idx,
-                  eos_token=eos_token_idx,
-                  pad_token=pad_token_idx,
-                  unk_token=unk_token_idx)
-
-LABEL = data.LabelField(dtype=torch.float)
+# from torchtext import data
+#
+# TEXT = data.Field(batch_first=True,
+#                   use_vocab=False,
+#                   tokenize=tokenize_and_cut,
+#                   preprocessing=tokenizer.convert_tokens_to_ids,
+#                   init_token=init_token_idx,
+#                   eos_token=eos_token_idx,
+#                   pad_token=pad_token_idx,
+#                   unk_token=unk_token_idx)
+#
+# LABEL = data.LabelField(dtype=torch.float)
 
 """We load the data and create the validation splits as before."""
 
-from torchtext import datasets
+from bert.dataset import TweetDataset
 
-train_data, test_data = datasets.IMDB.splits(TEXT, LABEL)
+dataset = TweetDataset()
+# dataset.create_json()
+train_data, test_data = dataset.torchtext()
 
 train_data, valid_data = train_data.split(random_state=random.seed(SEED))
 
