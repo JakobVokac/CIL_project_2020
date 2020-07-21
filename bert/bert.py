@@ -21,6 +21,10 @@ import torch
 import logging
 import random
 import numpy as np
+import json
+
+from dataset import Twitter
+config = json.load(open("configurations/full.json","r"))
 
 SEED = 1234
 
@@ -30,35 +34,20 @@ np.random.seed(SEED)
 torch.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 
-"""The transformer has already been trained with a specific vocabulary, which means we need to train with the exact same vocabulary and also tokenize our data in the same way that the transformer did when it was initially trained.
-
-Luckily, the transformers library has tokenizers for each of the transformer models provided. In this case we are using the BERT model which ignores casing (i.e. will lower case every word). We get this by loading the pre-trained `bert-base-uncased` tokenizer.
-"""
-
 from transformers import BertTokenizer
 
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-
-"""The `tokenizer` has a `vocab` attribute which contains the actual vocabulary we will be using. We can check how many tokens are in it by checking its length."""
+tokenizer = BertTokenizer.from_pretrained(config["bert_model"])
 
 len(tokenizer.vocab)
-
-"""Using the tokenizer is as simple as calling `tokenizer.tokenize` on a string. This will tokenize and lower case the data in a way that is consistent with the pre-trained transformer model."""
 
 tokens = tokenizer.tokenize('Hello WORLD how ARE yoU?')
 
 print(tokens)
 
-"""We can numericalize tokens using our vocabulary using `tokenizer.convert_tokens_to_ids`."""
-
 indexes = tokenizer.convert_tokens_to_ids(tokens)
 
 print(indexes)
 
-"""The transformer was also trained with special tokens to mark the beginning and end of the sentence, detailed [here](https://huggingface.co/transformers/model_doc/bert.html#transformers.BertModel). As well as a standard padding and unknown token. We can also get these from the tokenizer.
-
-**Note**: the tokenizer does have a beginning of sequence and end of sequence attributes (`bos_token` and `eos_token`) but these are not set and should not be used for this transformer.
-"""
 
 init_token = tokenizer.cls_token
 eos_token = tokenizer.sep_token
@@ -67,16 +56,12 @@ unk_token = tokenizer.unk_token
 
 print("{} {} {} {}".format(init_token, eos_token, pad_token, unk_token))
 
-"""We can get the indexes of the special tokens by converting them using the vocabulary..."""
-
 init_token_idx = tokenizer.convert_tokens_to_ids(init_token)
 eos_token_idx = tokenizer.convert_tokens_to_ids(eos_token)
 pad_token_idx = tokenizer.convert_tokens_to_ids(pad_token)
 unk_token_idx = tokenizer.convert_tokens_to_ids(unk_token)
 
 print("{} {} {} {}".format(init_token_idx, eos_token_idx, pad_token_idx, unk_token_idx))
-
-"""...or by explicitly getting them from the tokenizer."""
 
 init_token_idx = tokenizer.cls_token_id
 eos_token_idx = tokenizer.sep_token_id
@@ -85,48 +70,36 @@ unk_token_idx = tokenizer.unk_token_id
 
 print("{} {} {} {}".format(init_token_idx, eos_token_idx, pad_token_idx, unk_token_idx))
 
-"""Another thing we need to handle is that the model was trained on sequences with a defined maximum length - it does not know how to handle sequences longer than it has been trained on. We can get the maximum length of these input sizes by checking the `max_model_input_sizes` for the version of the transformer we want to use. In this case, it is 512 tokens."""
-
-max_input_length = tokenizer.max_model_input_sizes['bert-base-uncased']
+max_input_length = tokenizer.max_model_input_sizes[config["bert_model"]]
 
 print(max_input_length)
 
-"""Previously we have used the `spaCy` tokenizer to tokenize our examples. However we now need to define a function that we will pass to our `TEXT` field that will handle all the tokenization for us. It will also cut down the number of tokens to a maximum length. Note that our maximum length is 2 less than the actual maximum length. This is because we need to append two tokens to each sequence, one to the start and one to the end."""
-
-device = torch.device('cuda') # if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda')  # if torch.cuda.is_available() else 'cpu')
 print("cuda available={}".format(torch.cuda.is_available()))
+
 
 def tokenize_and_cut(sentence):
     tokens = tokenizer.tokenize(sentence)
     tokens = tokens[:max_input_length - 2]
     return tokens
 
+from torchtext import data
 
-"""Now we define our fields. The transformer expects the batch dimension to be first, so we set `batch_first = True`. As we already have the vocabulary for our text, provided by the transformer we set `use_vocab = False` to tell torchtext that we'll be handling the vocabulary side of things. We pass our `tokenize_and_cut` function as the tokenizer. The `preprocessing` argument is a function that takes in the example after it has been tokenized, this is where we will convert the tokens to their indexes. Finally, we define the special tokens - making note that we are defining them to be their index value and not their string value, i.e. `100` instead of `[UNK]` This is because the sequences will already be converted into indexes.
-
-We define the label field as before.
-"""
-
-# from torchtext import data
 #
-# TEXT = data.Field(batch_first=True,
-#                   use_vocab=False,
-#                   tokenize=tokenize_and_cut,
-#                   preprocessing=tokenizer.convert_tokens_to_ids,
-#                   init_token=init_token_idx,
-#                   eos_token=eos_token_idx,
-#                   pad_token=pad_token_idx,
-#                   unk_token=unk_token_idx)
+TEXT = data.Field(batch_first=True,
+                  use_vocab=False,
+                  tokenize=tokenize_and_cut,
+                  preprocessing=tokenizer.convert_tokens_to_ids,
+                  init_token=init_token_idx,
+                  eos_token=eos_token_idx,
+                  pad_token=pad_token_idx,
+                  unk_token=unk_token_idx)
 #
-# LABEL = data.LabelField(dtype=torch.float)
+LABEL = data.LabelField(dtype=torch.float)
 
-"""We load the data and create the validation splits as before."""
+train_data, test_data = Twitter.splits(TEXT, LABEL)
 
-from bert.dataset import TweetDataset
-
-dataset = TweetDataset()
-# dataset.create_json()
-train_data, test_data = dataset.torchtext()
+print("train_len={}, test_len={}".format(len(train_data), len(test_data)))
 
 train_data, valid_data = train_data.split(random_state=random.seed(SEED))
 
@@ -134,47 +107,28 @@ print(f"Number of training examples: {len(train_data)}")
 print(f"Number of validation examples: {len(valid_data)}")
 print(f"Number of testing examples: {len(test_data)}")
 
-"""We can check an example and ensure that the text has already been numericalized."""
-
 print(vars(train_data.examples[6]))
-
-"""We can use the `convert_ids_to_tokens` to transform these indexes back into readable tokens."""
 
 tokens = tokenizer.convert_ids_to_tokens(vars(train_data.examples[6])['text'])
 
 print(tokens)
 
-"""Although we've handled the vocabulary for the text, we still need to build the vocabulary for the labels."""
-
 LABEL.build_vocab(train_data)
 
 print(LABEL.vocab.stoi)
 
-"""As before, we create the iterators. Ideally we want to use the largest batch size that we can as I've found this gives the best results for transformers."""
-
-BATCH_SIZE = 64
-
+BATCH_SIZE = config["batch_size"]
 
 train_iterator, valid_iterator, test_iterator = data.BucketIterator.splits(
     (train_data, valid_data, test_data),
     batch_size=BATCH_SIZE,
     device=device)
 
-"""## Build the Model
-
-Next, we'll load the pre-trained model, making sure to load the same model as we did for the tokenizer.
-"""
 
 from transformers import BertTokenizer, BertModel
 
-bert = BertModel.from_pretrained('bert-base-uncased')
+bert = BertModel.from_pretrained(config["bert_model"])
 
-"""Next, we'll define our actual model. 
-
-Instead of using an embedding layer to get embeddings for our text, we'll be using the pre-trained transformer model. These embeddings will then be fed into a GRU to produce a prediction for the sentiment of the input sentence. We get the embedding dimension size (called the `hidden_size`) from the transformer via its config attribute. The rest of the initialization is standard.
-
-Within the forward pass, we wrap the transformer in a `no_grad` to ensure no gradients are calculated over this part of the model. The transformer actually returns the embeddings for the whole sequence as well as a *pooled* output. The [documentation](https://huggingface.co/transformers/model_doc/bert.html#transformers.BertModel) states that the pooled output is "usually not a good summary of the semantic content of the input, you’re often better with averaging or pooling the sequence of hidden-states for the whole input sequence", hence we will not be using it. The rest of the forward pass is the standard implementation of a recurrent model, where we take the hidden state over the final time-step, and pass it through a linear layer to get our predictions.
-"""
 
 import torch.nn as nn
 
@@ -234,11 +188,11 @@ class BERTGRUSentiment(nn.Module):
 
 """Next, we create an instance of our model using standard hyperparameters."""
 
-HIDDEN_DIM = 128
-OUTPUT_DIM = 1
-N_LAYERS = 1
-BIDIRECTIONAL = True
-DROPOUT = 0.25
+HIDDEN_DIM = config["hidden_dim"]
+OUTPUT_DIM = config["output_dim"]
+N_LAYERS = config["num_layers"]
+BIDIRECTIONAL = config["bidirectional"]
+DROPOUT = config["dropout"]
 
 model = BERTGRUSentiment(bert,
                          HIDDEN_DIM,
@@ -256,13 +210,9 @@ def count_parameters(model):
 
 print(f'The model has {count_parameters(model):,} trainable parameters')
 
-"""In order to freeze paramers (not train them) we need to set their `requires_grad` attribute to `False`. To do this, we simply loop through all of the `named_parameters` in our model and if they're a part of the `bert` transformer model, we set `requires_grad = False`."""
-
 for name, param in model.named_parameters():
     if name.startswith('bert'):
         param.requires_grad = False
-
-"""We can now see that our model has under 3M trainable parameters, making it almost comparable to the `FastText` model. However, the text still has to propagate through the transformer which causes training to take considerably longer."""
 
 
 def count_parameters(model):
@@ -270,8 +220,6 @@ def count_parameters(model):
 
 
 print(f'The model has {count_parameters(model):,} trainable parameters')
-
-"""We can double check the names of the trainable parameters, ensuring they make sense. As we can see, they are all the parameters of the GRU (`rnn`) and the linear layer (`out`)."""
 
 for name, param in model.named_parameters():
     if param.requires_grad:
@@ -288,12 +236,8 @@ optimizer = optim.Adam(model.parameters())
 
 criterion = nn.BCEWithLogitsLoss()
 
-"""Place the model and criterion onto the GPU (if available)"""
-
 model = model.to(device)
 criterion = criterion.to(device)
-
-"""Next, we'll define functions for: calculating accuracy, performing a training epoch, performing an evaluation epoch and calculating how long a training/evaluation epoch takes."""
 
 
 def binary_accuracy(preds, y):
@@ -363,10 +307,7 @@ def epoch_time(start_time, end_time):
     elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
     return elapsed_mins, elapsed_secs
 
-
-"""Finally, we'll train our model. This takes considerably longer than any of the previous models due to the size of the transformer. Even though we are not training any of the transformer's parameters we still need to pass the data through the model which takes a considerable amount of time on a standard GPU."""
-
-N_EPOCHS = 1
+N_EPOCHS = 3
 
 best_valid_loss = float('inf')
 
@@ -384,25 +325,17 @@ for epoch in range(N_EPOCHS):
 
     if valid_loss < best_valid_loss:
         best_valid_loss = valid_loss
-        torch.save(model.state_dict(), 'tut6-model.pt')
+        torch.save(model.state_dict(), 'bert-model.pt')
 
     print(f'Epoch: {epoch + 1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
     print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc * 100:.2f}%')
     print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc * 100:.2f}%')
 
-"""We'll load up the parameters that gave us the best validation loss and try these on the test set - which gives us our best results so far!"""
-
-model.load_state_dict(torch.load('tut6-model.pt'))
+model.load_state_dict(torch.load('bert-model.pt'))
 print("START EVAL")
 test_loss, test_acc = evaluate(model, test_iterator, criterion)
 
 print(f'Test Loss: {test_loss:.3f} | Test Acc: {test_acc * 100:.2f}%')
-
-"""## Inference
-
-We'll then use the model to test the sentiment of some sequences. We tokenize the input sequence, trim it down to the maximum length, add the special tokens to either side, convert it to a tensor, add a fake batch dimension and then pass it through our model.
-"""
-
 
 def predict_sentiment(model, tokenizer, sentence):
     model.eval()
@@ -415,6 +348,22 @@ def predict_sentiment(model, tokenizer, sentence):
     return prediction.item()
 
 
-predict_sentiment(model, tokenizer, "This film is terrible")
+def predict_label(model, tokenizer, sentence):
+    prediction = predict_sentiment(model, tokenizer, sentence)
+    if prediction > 0.5:
+        return 1
+    else:
+        return -1
 
-predict_sentiment(model, tokenizer, "This film is great")
+
+print("Doing the predictions ...")
+output = open("submission.csv", "w+")
+test = open("data/"+config["test_file"], "r+")
+
+output.write("Id,Prediction\n")
+for i, line in enumerate(test.readlines()):
+    prediction = predict_label(model, tokenizer, line.replace("\n", ""))
+    output.write("{},{}\n".format(i + 1, str(prediction)))
+
+output.close()
+test.close()
