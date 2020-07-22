@@ -22,9 +22,11 @@ import logging
 import random
 import numpy as np
 import json
+import sys
 
 from dataset import Twitter
-config = json.load(open("configurations/full.json","r"))
+
+config = json.load(open("configurations/full.json", "r"))
 
 SEED = 1234
 
@@ -34,7 +36,7 @@ np.random.seed(SEED)
 torch.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 
-from transformers import BertTokenizer
+from transformers import BertTokenizer, AutoTokenizer, AutoModelWithLMHead
 
 tokenizer = BertTokenizer.from_pretrained(config["bert_model"])
 
@@ -47,7 +49,6 @@ print(tokens)
 indexes = tokenizer.convert_tokens_to_ids(tokens)
 
 print(indexes)
-
 
 init_token = tokenizer.cls_token
 eos_token = tokenizer.sep_token
@@ -82,6 +83,7 @@ def tokenize_and_cut(sentence):
     tokens = tokenizer.tokenize(sentence)
     tokens = tokens[:max_input_length - 2]
     return tokens
+
 
 from torchtext import data
 
@@ -124,11 +126,9 @@ train_iterator, valid_iterator, test_iterator = data.BucketIterator.splits(
     batch_size=BATCH_SIZE,
     device=device)
 
-
 from transformers import BertTokenizer, BertModel
 
 bert = BertModel.from_pretrained(config["bert_model"])
-
 
 import torch.nn as nn
 
@@ -148,6 +148,7 @@ class BERTGRUSentiment(nn.Module):
 
         embedding_dim = bert.config.to_dict()['hidden_size']
 
+        # CHANGE here
         self.rnn = nn.GRU(embedding_dim,
                           hidden_dim,
                           num_layers=n_layers,
@@ -307,7 +308,8 @@ def epoch_time(start_time, end_time):
     elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
     return elapsed_mins, elapsed_secs
 
-N_EPOCHS = 3
+
+N_EPOCHS = config["epochs"]
 
 best_valid_loss = float('inf')
 
@@ -337,6 +339,7 @@ test_loss, test_acc = evaluate(model, test_iterator, criterion)
 
 print(f'Test Loss: {test_loss:.3f} | Test Acc: {test_acc * 100:.2f}%')
 
+
 def predict_sentiment(model, tokenizer, sentence):
     model.eval()
     tokens = tokenizer.tokenize(sentence)
@@ -358,7 +361,7 @@ def predict_label(model, tokenizer, sentence):
 
 print("Doing the predictions ...")
 output = open("submission.csv", "w+")
-test = open("data/"+config["test_file"], "r+")
+test = open("data/" + config["test_file"], "r+")
 
 output.write("Id,Prediction\n")
 for i, line in enumerate(test.readlines()):

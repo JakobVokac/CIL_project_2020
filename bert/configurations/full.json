@@ -1,11 +1,13 @@
 {
-  "train_file": "train_proc_full.json",
   "test_file": "test_preprocessed.txt",
-  "bert_model": "bert-large-uncased",
+  "bert_model": "bert-base-uncased",
   "batch_size": 128,
   "hidden_dim": 256,
   "output_dim": 1,
   "num_layers": 2,
   "bidirectional": true,
-  "dropout": 0.25
+  "dropout": 0.25,
+  "epochs": 5,
+  "train_file": "train_proc_1000000.json",
+  "number_tweets": 1000000
 }

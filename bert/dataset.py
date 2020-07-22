@@ -6,6 +6,8 @@ import sys
 
 from torchtext import data
 
+from preprocessor.Preprocessors import TweetProcessor
+
 config = json.load(open("configurations/full.json","r"))
 
 
@@ -61,7 +63,7 @@ class Twitter(data.Dataset):
             train=train, validation=None, test=test, **kwargs)
 
     @classmethod
-    def iters(cls, batch_size=32, device=0, root='.data', vectors=None, **kwargs):
+    def iters(cls, batch_size=1024, device=0, root='.data', vectors=None, **kwargs):
         """Create iterator objects for splits of the IMDB dataset.
 
         Arguments:
@@ -86,25 +88,14 @@ class Twitter(data.Dataset):
             (train, test), batch_size=batch_size, device=device)
 
 
+
 def main(argv):
-    # neg / pos in one file
-    output = open(os.getcwd() + "/data/train_proc_full.json", "w+")
-    file = open(os.getcwd() + "/src/data/train_preprocessed_full.txt", "r+")
-    for i, line in enumerate(file.readlines()):
-        elems = line.split(",")
-        output.write(
-            json.dumps({"tweet": elems[0].replace("\n", ""), "prediction": int(elems[1].replace("\n", ""))}) + "\n")
-    output.close()
-    file.close()
-    exit(0)
-
-
-def main2(argv):
     # neg / pos tweets in separate files
-    number_tweet = 20000000
-    output = open(os.getcwd() + "/data/train.json", "w+")
+    number_tweet = config["number_tweets"] / 2
+    output = open(os.getcwd() + "/bert/data/train_proc_"+ str(config["number_tweets"]) +".json", "w+")
     neg = open(os.getcwd() + "/src/data/train_neg_full.txt", "r+")
     pos = open(os.getcwd() + "/src/data/train_pos_full.txt", "r+")
+    processor = TweetProcessor()
     for file in [pos, neg]:
         if file is pos:
             label = 1
@@ -112,7 +103,8 @@ def main2(argv):
             label = 0
         for i, line in enumerate(file.readlines()):
             if i < number_tweet:
-                output.write(json.dumps({"tweet": line.replace("\n", ""), "prediction": label}) + "\n")
+                tweet = processor.process(line.replace("\n", ""))
+                output.write(json.dumps({"tweet": tweet, "prediction": label}) + "\n")
     output.close()
     neg.close()
     pos.close()
