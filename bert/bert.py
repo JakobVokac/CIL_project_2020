@@ -36,7 +36,7 @@ np.random.seed(SEED)
 torch.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 
-from transformers import BertTokenizer, AutoTokenizer, AutoModelWithLMHead
+from transformers import BertTokenizer
 
 tokenizer = BertTokenizer.from_pretrained(config["bert_model"])
 
@@ -145,7 +145,6 @@ class BERTGRUSentiment(nn.Module):
         super().__init__()
 
         self.bert = bert
-
         embedding_dim = bert.config.to_dict()['hidden_size']
 
         # CHANGE here

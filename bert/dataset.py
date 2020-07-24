@@ -103,7 +103,8 @@ def main(argv):
             label = 0
         for i, line in enumerate(file.readlines()):
             if i < number_tweet:
-                tweet = processor.process(line.replace("\n", ""))
+                tweet = line.replace("\n", "")
+                # tweet = processor.process(line.replace("\n", ""))
                 output.write(json.dumps({"tweet": tweet, "prediction": label}) + "\n")
     output.close()
     neg.close()
