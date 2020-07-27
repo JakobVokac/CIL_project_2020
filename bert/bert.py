@@ -360,7 +360,7 @@ def predict_label(model, tokenizer, sentence):
 
 print("Doing the predictions ...")
 output = open("submission.csv", "w+")
-test = open("data/" + config["test_file"], "r+")
+test = open("data1/" + config["test_file"], "r+")
 
 output.write("Id,Prediction\n")
 for i, line in enumerate(test.readlines()):

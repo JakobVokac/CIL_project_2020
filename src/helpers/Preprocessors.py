@@ -7,7 +7,7 @@ import re
 
 class TweetProcessor(object):
     """
-    pre-process and clean the tweets (works for training and test data)
+    pre-process and clean the tweets (works for training and test data1)
     source: https://towardsdatascience.com/basic-tweet-preprocessing-in-python-efd8360d529ehttps://towardsdatascience.com/basic-tweet-preprocessing-in-python-efd8360d529e
     """
 
@@ -17,7 +17,7 @@ class TweetProcessor(object):
         case 2: source = test_data
         """
         #self.stopwords = [str(line).replace("\n", "") for line in open(os.getcwd()+"/src/helpers/stopwords.txt").readlines()]
-        self.dictionary = json.load(open(os.getcwd() + "/src/helpers/data.json"))
+        self.dictionary = json.load(open(os.getcwd() + "/src/helpers/data1.json"))
 
     def handle_emojis(self, tweet):
         for positive in self.dictionary["POS_EMOJI"]:
