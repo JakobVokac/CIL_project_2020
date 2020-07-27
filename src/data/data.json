@@ -1,0 +1,77 @@
+{
+  "POS_EMOJI": [
+    {
+      "type": "smile",
+      "regex": "(:\\s?\\)|:-\\)|\\(\\s?:|\\(-:|:\\'\\))",
+      "replacement": " POS_EMOJI "
+    },
+    {
+      "type": "laugh",
+      "regex" : "(:\\s?D|:-D|x-?D|X-?D)",
+      "replacement": " POS_EMOJI "
+    },
+    {
+      "type": "love",
+      "regex": "(<3|:\\*)",
+      "replacement": " POS_EMOJI "
+    },
+    {
+      "type": "wink",
+      "regex": "(;-?\\)|;-?D|\\(-?;)",
+      "replacement": " POS_EMOJI "
+    }
+  ],
+  "NEG_EMOJI": [
+    {
+      "type": "sad",
+      "regex": "(:\\s?\\(|:-\\(|\\)\\s?:|\\)-:)",
+      "replacement": " NEG_EMOJI "
+    },
+    {
+      "type": "cry",
+      "regex": "(:,\\(|:\\'\\(|:\"\\()",
+      "replacement": " NEG_EMOJI "
+    }
+  ],
+  "WORD_CLEANING": [
+    {
+      "type": "ponctuation",
+      "regex": "(.)\\1+",
+      "replacement": "\\1\\1"
+    },
+    {
+      "type": "remove_and",
+      "regex": "(-|\\')",
+      "replacement": ""
+    }
+  ],
+  "TWEET_CLEANING": [
+    {
+      "type": "multiple_spaces",
+      "regex": "\\s+",
+      "replacement": " "
+    },
+    {
+      "type": "replace_hashtag",
+      "regex": "#(\\S+)",
+      "replacement": " \\1 "
+    },
+    {
+      "type": "remove_retweet",
+      "regex": "\\brt\\b",
+      "replacement": ""
+    },
+    {
+      "type": "replace_2dot",
+      "regex": "\\.{2,}",
+      "replacement": " "
+    }
+  ],
+  "WORD_VALIDITY": [
+    {
+      "type": "condition1",
+      "regex": "^[a-zA-Z][a-z0-9A-Z\\._]*$",
+      "replacement": " "
+    }
+  ]
+}
