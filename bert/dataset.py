@@ -6,9 +6,9 @@ import sys
 
 from torchtext import data
 
-from preprocessor.Preprocessors import TweetProcessor
+from preprocessing.Preprocessors import TweetProcessor
 
-config = json.load(open("configurations/full.json","r"))
+config = json.load(open("bert/configurations/full.json","r"))
 
 
 class Twitter(data.Dataset):
@@ -92,10 +92,11 @@ class Twitter(data.Dataset):
 def main(argv):
     # neg / pos tweets in separate files
     number_tweet = config["number_tweets"] / 2
-    output = open(os.getcwd() + "/bert/data/train_proc_"+ str(config["number_tweets"]) +".json", "w+")
+    output = open(os.getcwd() + "/bert/data/proc/train_proc_"+ str(config["number_tweets"]) +".json", "w+")
     neg = open(os.getcwd() + "/src/data/train_neg_full.txt", "r+")
     pos = open(os.getcwd() + "/src/data/train_pos_full.txt", "r+")
     processor = TweetProcessor()
+    last_tweet = ""
     for file in [pos, neg]:
         if file is pos:
             label = 1
@@ -103,14 +104,72 @@ def main(argv):
             label = 0
         for i, line in enumerate(file.readlines()):
             if i < number_tweet:
-                tweet = line.replace("\n", "")
-                # tweet = processor.process(line.replace("\n", ""))
-                output.write(json.dumps({"tweet": tweet, "prediction": label}) + "\n")
+                # tweet = line.replace("\n", "")
+                tweet = processor.process(line.replace("\n", ""))
+                if last_tweet == tweet:
+                    pass
+                else:
+                    output.write(json.dumps({"tweet": tweet, "prediction": label}) + "\n")
+                last_tweet = tweet
     output.close()
     neg.close()
     pos.close()
     exit(0)
 
+def main_test_proc(argv):
+    test = open(os.getcwd() + "/src/data/test_data.txt", "r+")
+    output = open(os.getcwd() + "/bert/data/test_preprocessed.txt", "w+")
+    processor = TweetProcessor()
+    for i, line in enumerate(test.readlines()):
+        line = line.split(",")[1]
+        tweet = processor.process(line.replace("\n", ""))
+        output.write(tweet+"\n")
+    test.close()
+    output.close()
+    exit(0)
+
+def main_test(argv):
+    test = open(os.getcwd() + "/src/data/test_data.txt", "r+")
+    output = open(os.getcwd() + "/bert/data/test_data.txt", "w+")
+    for i, line in enumerate(test.readlines()):
+        line = line.split(",")[1]
+        tweet = line.replace("\n", "")
+        output.write(tweet+"\n")
+    test.close()
+    output.close()
+    exit(0)
+
+
+def main_test_xlnet(argv):
+    test = open(os.getcwd() + "/src/data/test_data.txt", "r+")
+    output = open(os.getcwd() + "/bert/data/test_data_xlnet.txt", "w+")
+    processor = TweetProcessor()
+    for i, line in enumerate(test.readlines()):
+        line = line.split(",")[1]
+        tweet = processor.process(line.replace("\n", ""))
+        output.write(str(i+1)+","+tweet+"\n")
+    test.close()
+    output.close()
+    exit(0)
+
+def main_xlnet(argv):
+    # neg / pos tweets in separate files
+    output = open(os.getcwd() + "/bert/data/proc/train_proc_pos_full.txt", "w+")
+    file = open(os.getcwd() + "/src/data/train_pos_full.txt", "r+")
+    processor = TweetProcessor()
+    last_tweet = ""
+    for i, line in enumerate(file.readlines()):
+        # tweet = line.replace("\n", "")
+        tweet = processor.process(line.replace("\n", ""))
+        if last_tweet == tweet:
+            pass
+        else:
+            output.write(tweet + "\n")
+        last_tweet = tweet
+    output.close()
+    file.close()
+    exit(0)
 
 if __name__ == '__main__':
-    main(sys.argv)
+    # main_test_proc(sys.argv)
+    main_xlnet(sys.argv)
