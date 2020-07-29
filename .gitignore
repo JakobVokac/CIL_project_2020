@@ -4,3 +4,5 @@ venv/
 bert/data/
 roberta/dataset/
 src/train_proc_2500000.json
+*.pkl
+xlnet/dataset/
