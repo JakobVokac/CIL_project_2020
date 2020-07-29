@@ -171,7 +171,7 @@ CONTRACTiONS = {
 
 class TweetProcessor(object):
     """
-    pre-process and clean the tweets (works for training and test data1)
+    pre-process and clean the tweets (works for training and test data)
     source: https://towardsdatascience.com/basic-tweet-preprocessing-in-python-efd8360d529ehttps://towardsdatascience.com/basic-tweet-preprocessing-in-python-efd8360d529e
     https://medium.com/@datamonsters/text-preprocessing-in-python-steps-tools-and-examples-bf025f872908
     """
@@ -182,7 +182,7 @@ class TweetProcessor(object):
         case 2: source = test_data
         """
         #self.stopwords = [str(line).replace("\n", "") for line in open(os.getcwd()+"/src/helpers/stopwords.txt").readlines()]
-        self.dictionary = json.load(open(os.getcwd() + "/src/helpers/data1.json"))
+        self.dictionary = json.load(open(os.getcwd() + "/src/helpers/data.json"))
 
     def handle_emojis(self, tweet):
         for positive in self.dictionary["POS_EMOJi"]:
@@ -237,7 +237,7 @@ class TweetProcessor(object):
         # replace emojis with either POS_EMOJi or NEG_EMOJi
         # tweet = self.handle_emojis(tweet)
         tweet = tweet.strip()
-        tweet = p.tokenize(tweet)
+        # tweet = p.tokenize(tweet)
         tweet = self.remove_contractions(tweet)
         for word in tweet.split():
             word = re.sub("(?:(h|a)*(?:aha)+(h|a)?|(?:l+o+)+l+)", "$LAUGH$", word)

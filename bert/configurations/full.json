@@ -1,14 +1,14 @@
 {
-  "test_file": "test_preprocessed.txt",
-  "bert_model": "bert-large-uncased-whole-word-masking",
-  "batch_size": 128,
-  "hidden_dim": 256,
+  "test_file": "test_data.txt",
+  "bert_model": "bert-base-uncased",
+  "batch_size": 100,
+  "hidden_dim": 100,
   "output_dim": 1,
-  "num_layers": 2,
+  "num_layers": 1,
   "bidirectional": true,
   "dropout": 0.25,
-  "epochs": 5,
-  "train_file": "proc/train_proc_2500000.json",
+  "epochs": 1,
+  "train_file": "train_full.json",
   "number_tweets": 2500000
 }
 
