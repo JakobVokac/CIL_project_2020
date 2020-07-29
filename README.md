@@ -13,6 +13,9 @@ Labelling small texts as **positive or negative** is a key-challenge in Natural 
 In this work we combined different methods and used transfer learning on a dataset of 2.5M Tweets to classify them
 between these two categories of sentiment with the highest accuracy. We achieved an accuracy of **90.32** with our best model.
 
+#### Dataset 
+
+- Download the sample and full dataset here: `http://www.da.inf.ethz.ch/teaching/2018/CIL/material/exercise/twitter-datasets.zip`
 
 <a name="models"></a>
 ### Models
