@@ -14,6 +14,7 @@ import torch.nn.functional as F
 import numpy as np
 import random
 
+#This is the classifier network. It has two hidden layers and relu activation functions
 class Net(nn.Module):
     def __init__(self):
         super().__init__()
@@ -27,8 +28,10 @@ class Net(nn.Module):
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
         x = self.fc4(x)
+        #log_softmax to get the probabilites
         return F.log_softmax(x, dim=1)
 
+#implement the torch.utils.Dataset module to use torch.utils.data.DataLoader
 class Dataset(torch.utils.data.Dataset):
     
     def __init__(self, tweets, labels):
@@ -43,6 +46,7 @@ class Dataset(torch.utils.data.Dataset):
         y = self.labels[index]
         return X, y
 
+#Run on gpu if available
 if torch.cuda.is_available():
   device = torch.device("cuda:0")
   print("Running on the GPU")
@@ -50,27 +54,26 @@ else:
   device = torch.device("cpu")
   print("Running on the CPU")
 
+#Read the tweets
 with open("train_proc_full.txt") as f:
     pos_tweets = f.readlines()
 
 with open("train_proc_full.txt") as f:
     neg_tweets = f.readlines()
     
-pos_tweet = pos_tweets[0]
-neg_tweet = neg_tweets[0]
-
+#shuffle the tweets to avoid getting one batch of identical tweets during training or in the validation set
 random.seed(12355)
 random.shuffle(pos_tweets)
 random.shuffle(neg_tweets)
 
-# to change
+#set this to use smaller training sets
 set_length = 500000
 
 pos_tweets = pos_tweets[:set_length]
 neg_tweets = neg_tweets[:set_length]
 print("Taking {} data".format(set_length))
 
-# to change sYOLheG7dqq5
+#compute numbers based on the size of the data
 tweet_size = len(pos_tweets) + len(neg_tweets)
 validation_set_size = 50000
 num_epochs = 1
@@ -79,6 +82,7 @@ train_set_size = tweet_size - validation_set_size
 num_train_steps = int(num_epochs*(train_set_size//train_batch_size))
 num_warmup_steps = 100
 
+#set up the training and validation sets and their labels and create torch.utils.data.Dataloaders based on that
 train_tweets = pos_tweets[:-(validation_set_size//2)]
 train_tweets.extend(neg_tweets[:-validation_set_size//2])
 
@@ -94,39 +98,50 @@ validation_labels.extend(list(np.zeros(len(train_tweets)//2)))
 tweet_trainset = torch.utils.data.DataLoader(Dataset(train_tweets, train_labels), batch_size=train_batch_size, shuffle=True)
 tweet_validationset = torch.utils.data.DataLoader(Dataset(validation_tweets, validation_labels), batch_size=10, shuffle=False)
     
-  
+#load the pretrained model, the tokenizer and instantiate the classifier
 tokenizer = XLNetTokenizer.from_pretrained('xlnet-base-cased')
 model = XLNetModel.from_pretrained('xlnet-base-cased',).to(device)
 classifier = Net().to(device)
 
+#collect the parameters to be trained and pass them to the optimizer
 parameters = list(model.parameters()) + list(classifier.parameters())
 
 optimizer = AdamW(parameters, lr=1e-5)
 loss_function = nn.CrossEntropyLoss()
 
+#scheduler for the stepsize, starts of with warm_up during which it increases linearly from 0 to 1 for num_warmup_steps then decreases linearly back to 0
 scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps, num_train_steps)
 
+#since we actually ended up using just one training epoch this loop isn't that relevant anymore
+#but if desired num_epochs can be adjusted to increase the number of loops
 for epoch in range(num_epochs):
     count = 0
     accuracy = 0
-    for data in tweet_trainset:   
+    for data in tweet_trainset:
+        #load and format batch to pass to the encoder and the classifier
         tweet_batch, labels = data
         labels = labels.long()
+        #make sure we reset the gradients on the parameters
         model.zero_grad()
         classifier.zero_grad()
+        #feed the batch through the tokenizer, the encoder and the classifier while making sure that everything is running on the gpu
         labels = labels.to(device)
+        #truncate and pad to make sure that the outupt dimensions stay constant
         encoding = tokenizer(tweet_batch, return_tensors='pt', padding='max_length', truncation=True, max_length=100)
         encoding = encoding.to(device)
         outputs = model(**encoding)
         reshaped_outputs = outputs[0].view(train_batch_size,76800)
         classifier_output = classifier(reshaped_outputs)
+        #compute loss, optimize and adjust training step size
         loss = F.nll_loss(classifier_output, labels)
         loss.backward()
         optimizer.step()
         scheduler.step()
         count += 1
+        #output to keep track of progress
         if count % 200 == 0:
           print("epoch progress: " + str(count) + "/" + str(train_set_size//train_batch_size))
+        #save models to continue in case of crashes
         if count % 10000 == 0:
           print("------------ Saving model ----------------")
           checkpoint_path = "checkpoint_" + str(epoch) + "_" + str(count // 10000) + ".tar"
@@ -140,7 +155,7 @@ for epoch in range(num_epochs):
               'scheduler_state_dict': scheduler.state_dict()
           }, checkpoint_path)
           
-    
+    #save models to continue in case of crashes
     print("------------ Saving model ----------------")
     checkpoint_path = "checkpoint_" + str(epoch) + "_" + str(count // 10000 + 1) + ".tar"
 
@@ -155,6 +170,7 @@ for epoch in range(num_epochs):
             
     correct = 0
     total = 0
+    #compute validation set accuracy
     with torch.no_grad():
         for data in tweet_validationset:
             tweet_batch, labels = data
@@ -178,7 +194,8 @@ for epoch in range(num_epochs):
             break
         else:
             accuracy = new_accuracy
-            
+
+#read and prepare test_set to be fed through the tokenizer, encoder and classifier
 with open("test_data.txt") as f:
     tweets = f.readlines()
     
@@ -187,16 +204,19 @@ for i, tweet in enumerate(tweets):
 
 results = []
 for i, tweet in enumerate(tweets):
+    #feed batch through tokenizer, encoder and classifier
     encoding = tokenizer(tweet, return_tensors='pt', padding='max_length', truncation=True, max_length=100)
     encoding = encoding.to(device)
     outputs = model(**encoding)
     reshaped_outputs = outputs[0].view(1, 76800)
     classifier_output = classifier(reshaped_outputs)[0]
+    #read predictions and store in results
     if torch.argmax(classifier_output) == 0:
         results.append(str(i + 1) + ",-1")
     else:
         results.append(str(i + 1) + ",1")
 
+#write results to file in csv format
 with open("xlnet_submission_full.csv", "w") as f:
     f.write("Id,Prediction\n")
     for result in results:
